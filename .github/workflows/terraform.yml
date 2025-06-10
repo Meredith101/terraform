@@ -3,7 +3,7 @@ name: Terraform Deploy to AWS
 on:
   push:
     branches:
-      - main 
+      - main # or your deployment branch
   workflow_dispatch:
 
 jobs:
@@ -23,13 +23,13 @@ jobs:
       
       - name: Get AWS credentials from Vault
         env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }} 
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}  # e.g., https://your-ec2-ip:8200
           VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
         run: |
-          # Retrieve AWS credentials from Vault
-          AWS_ACCESS_KEY_ID=$(vault kv get -field=access_key_id secret/aws/credentials)
-          AWS_SECRET_ACCESS_KEY=$(vault kv get -field=secret_access_key secret/aws/credentials)
-          AWS_REGION=$(vault kv get -field=region secret/aws/credentials)
+          # Retrieve AWS credentials from Vault (correct path where they're stored)
+          AWS_ACCESS_KEY_ID=$(vault kv get -field=AWS_ACCESS_KEY_ID secret/myapp/database)
+          AWS_SECRET_ACCESS_KEY=$(vault kv get -field=AWS_SECRET_ACCESS_KEY secret/myapp/database)
+          AWS_REGION=$(vault kv get -field=AWS_REGION secret/myapp/database)
           
           # Mask sensitive values in logs
           echo "::add-mask::$AWS_ACCESS_KEY_ID"
