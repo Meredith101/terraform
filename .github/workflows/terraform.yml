@@ -1,0 +1,55 @@
+name: Terraform Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main 
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: 'Terraform Plan & Apply'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Vault CLI
+        run: |
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install vault
+      
+      - name: Get AWS credentials from Vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }} 
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          # Retrieve AWS credentials from Vault
+          AWS_ACCESS_KEY_ID=$(vault kv get -field=access_key_id secret/aws/credentials)
+          AWS_SECRET_ACCESS_KEY=$(vault kv get -field=secret_access_key secret/aws/credentials)
+          AWS_REGION=$(vault kv get -field=region secret/aws/credentials)
+          
+          # Mask sensitive values in logs
+          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          
+          # Set as environment variables for subsequent steps
+          echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+          echo "AWS_REGION=$AWS_REGION" >> $GITHUB_ENV
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+      
+      - name: Terraform Init
+        run: terraform init
+      
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+      
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
